@@ -3,7 +3,7 @@ import react from '@vitejs/plugin-react';
 import path from 'path';
 
 export default defineConfig({
-    base: '/Web-Yan/',  // Ruta base para GitHub Pages
+    base: '/',  // Ruta base (usar '/' para Netlify, '/Web-Yan/' para GitHub Pages)
     plugins: [react()],
     resolve: {
         alias: {
