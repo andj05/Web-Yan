@@ -1,10 +1,9 @@
 import { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { authService } from '../../services/auth.service';
 import { UserPlus, Mail, Lock, User, AlertCircle, CheckCircle } from 'lucide-react';
 
 export default function Register() {
-    const navigate = useNavigate();
     const [formData, setFormData] = useState({
         email: '',
         password: '',

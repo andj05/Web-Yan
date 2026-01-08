@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import { Check, X, Mail, CreditCard, CheckCircle, Loader, ArrowLeft } from 'lucide-react';
+import { Check, Mail, CreditCard, CheckCircle, Loader, ArrowLeft } from 'lucide-react';
 import { paymentsService } from '../../services/user.service';
 
 interface Plan {
@@ -387,10 +387,10 @@ function StepIndicator({ number, active, completed }: { number: number; active: 
     return (
         <div
             className={`w-12 h-12 rounded-full flex items-center justify-center text-lg font-bold transition-colors ${completed
+                ? 'bg-primary-600 text-white'
+                : active
                     ? 'bg-primary-600 text-white'
-                    : active
-                        ? 'bg-primary-600 text-white'
-                        : 'bg-gray-300 text-gray-600'
+                    : 'bg-gray-300 text-gray-600'
                 }`}
         >
             {completed ? <Check className="w-6 h-6" /> : number}

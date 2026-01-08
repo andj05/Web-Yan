@@ -24,7 +24,7 @@ const statusConfig = {
     failed: { icon: XCircle, color: 'text-red-500', bg: 'bg-red-100', label: 'Fallido' },
 };
 
-export default function ProjectList({ projects, onRefresh }: ProjectListProps) {
+export default function ProjectList({ projects }: ProjectListProps) {
     if (projects.length === 0) {
         return (
             <div className="text-center py-12">

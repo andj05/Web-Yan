@@ -4,11 +4,9 @@ import { userService } from '../../services/user.service';
 import { projectsService } from '../../services/projects.service';
 import { Film, TrendingUp, Clock } from 'lucide-react';
 import ProjectList from './ProjectList.tsx';
-import CreditsDisplay from './CreditsDisplay.tsx';
 
 export default function Dashboard() {
     const [user, setUser] = useState<any>(null);
-    const [credits, setCredits] = useState(0);
     const [projects, setProjects] = useState([]);
     const [loading, setLoading] = useState(true);
 
@@ -18,14 +16,13 @@ export default function Dashboard() {
 
     const loadData = async () => {
         try {
-            const [userData, creditsData, projectsData] = await Promise.all([
+            const [userData, , projectsData] = await Promise.all([
                 userService.getMe(),
                 userService.getCredits(),
                 projectsService.getProjects(20),
             ]);
 
             setUser(userData);
-            setCredits(creditsData);
             setProjects(projectsData.projects);
         } catch (error) {
             console.error('Error loading dashboard data:', error);
