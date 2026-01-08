@@ -1,0 +1,339 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// =====================================================
+// USUARIOS Y AUTENTICACIÓN
+// =====================================================
+
+model User {
+  id              String   @id @default(uuid())
+  email           String   @unique
+  passwordHash    String   @map("password_hash")
+  fullName        String?  @map("full_name")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+  emailVerified   Boolean  @default(false) @map("email_verified")
+  isActive        Boolean  @default(true) @map("is_active")
+  lastLogin       DateTime? @map("last_login")
+
+  // Relaciones
+  subscriptions      UserSubscription[]
+  videoProjects      VideoProject[]
+  chatSessions       ChatSession[]
+  creditsTransactions CreditTransaction[]
+  payments           Payment[]
+  imageOnlyProjects  ImageOnlyProject[]
+  scriptOnlyProjects ScriptOnlyProject[]
+  voiceOnlyProjects  VoiceOnlyProject[]
+
+  @@map("users")
+}
+
+// =====================================================
+// PLANES Y SUSCRIPCIONES
+// =====================================================
+
+model SubscriptionPlan {
+  id              Int      @id @default(autoincrement())
+  name            String
+  description     String?
+  creditsIncluded Int      @map("credits_included")
+  priceUsd        Decimal  @map("price_usd") @db.Decimal(10, 2)
+  durationDays    Int      @map("duration_days")
+  isActive        Boolean  @default(true) @map("is_active")
+  features        Json?
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  // Relaciones
+  subscriptions UserSubscription[]
+  payments      Payment[]
+
+  @@map("subscription_plans")
+}
+
+model UserSubscription {
+  id                 String   @id @default(uuid())
+  userId             String   @map("user_id")
+  planId             Int      @map("plan_id")
+  subscriptionToken  String   @unique @map("subscription_token")
+  creditsRemaining   Int      @map("credits_remaining")
+  creditsTotal       Int      @map("credits_total")
+  startsAt           DateTime @map("starts_at")
+  expiresAt          DateTime @map("expires_at")
+  isActive           Boolean  @default(true) @map("is_active")
+  paymentId          String?  @map("payment_id")
+  createdAt          DateTime @default(now()) @map("created_at")
+  updatedAt          DateTime @updatedAt @map("updated_at")
+
+  // Relaciones
+  user              User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  plan              SubscriptionPlan @relation(fields: [planId], references: [id])
+  creditsTransactions CreditTransaction[]
+
+  @@map("user_subscriptions")
+}
+
+// =====================================================
+// PROYECTOS/VIDEOS
+// =====================================================
+
+model VideoProject {
+  id                    String    @id @default(uuid())
+  userId                String    @map("user_id")
+  
+  // Campos del formulario
+  title                 String
+  centralTheme          String    @map("central_theme") @db.Text
+  durationMinutes       Int       @map("duration_minutes")
+  language              String    @default("es")
+  voiceId               String?   @map("voice_id")
+  channelName           String?   @map("channel_name")
+  videoType             String?   @map("video_type")
+  
+  // Control de estado
+  status                String    @default("pending")
+  progress              Int       @default(0)
+  
+  // Resultados generados
+  scriptPart1           String?   @map("script_part1") @db.Text
+  scriptPart2           String?   @map("script_part2") @db.Text
+  scriptPart3           String?   @map("script_part3") @db.Text
+  scriptComplete        String?   @map("script_complete") @db.Text
+  audioUrl              String?   @map("audio_url") @db.Text
+  imagesCount           Int       @default(0) @map("images_count")
+  zipFileUrl            String?   @map("zip_file_url") @db.Text
+  
+  // Metadatos
+  creditsUsed           Int       @default(0) @map("credits_used")
+  errorMessage          String?   @map("error_message") @db.Text
+  processingStartedAt   DateTime? @map("processing_started_at")
+  processingCompletedAt DateTime? @map("processing_completed_at")
+  createdAt             DateTime  @default(now()) @map("created_at")
+  updatedAt             DateTime  @updatedAt @map("updated_at")
+
+  // Relaciones
+  user              User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  images            GeneratedImage[]
+  audioParts        GeneratedAudioPart[]
+  chatSessions      ChatSession[]
+  creditsTransactions CreditTransaction[]
+
+  @@map("video_projects")
+}
+
+// =====================================================
+// IMÁGENES GENERADAS
+// =====================================================
+
+model GeneratedImage {
+  id             String   @id @default(uuid())
+  projectId      String   @map("project_id")
+  
+  filename       String
+  sequenceNumber Int      @map("sequence_number")
+  prompt         String   @db.Text
+  imageUrl       String   @map("image_url") @db.Text
+  
+  timestampStart Int?     @map("timestamp_start")
+  timestampEnd   Int?     @map("timestamp_end")
+  duration       Int?
+  section        String?
+  
+  generationTime Decimal? @map("generation_time") @db.Decimal(5, 2)
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  // Relaciones
+  project VideoProject @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@map("generated_images")
+}
+
+// =====================================================
+// AUDIOS GENERADOS (partes)
+// =====================================================
+
+model GeneratedAudioPart {
+  id         String   @id @default(uuid())
+  projectId  String   @map("project_id")
+  
+  partNumber Int      @map("part_number")
+  textChunk  String   @map("text_chunk") @db.Text
+  audioUrl   String   @map("audio_url") @db.Text
+  duration   Decimal? @db.Decimal(10, 2)
+  
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  // Relaciones
+  project VideoProject @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@map("generated_audio_parts")
+}
+
+// =====================================================
+// CHAT CONVERSACIONAL
+// =====================================================
+
+model ChatSession {
+  id              String    @id @default(uuid())
+  userId          String    @map("user_id")
+  projectId       String?   @map("project_id")
+  
+  sessionStartedAt DateTime @default(now()) @map("session_started_at")
+  sessionEndedAt   DateTime? @map("session_ended_at")
+  isActive         Boolean  @default(true) @map("is_active")
+  
+  createdAt        DateTime @default(now()) @map("created_at")
+
+  // Relaciones
+  user     User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  project  VideoProject? @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  messages ChatMessage[]
+
+  @@map("chat_sessions")
+}
+
+model ChatMessage {
+  id         String   @id @default(uuid())
+  sessionId  String   @map("session_id")
+  
+  role       String
+  content    String   @db.Text
+  
+  tokensUsed Int?     @map("tokens_used")
+  modelUsed  String?  @map("model_used")
+  
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  // Relaciones
+  session ChatSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@map("chat_messages")
+}
+
+// =====================================================
+// HISTORIAL DE USO DE CRÉDITOS
+// =====================================================
+
+model CreditTransaction {
+  id              String   @id @default(uuid())
+  userId          String   @map("user_id")
+  subscriptionId  String?  @map("subscription_id")
+  projectId       String?  @map("project_id")
+  
+  transactionType String   @map("transaction_type")
+  creditsAmount   Int      @map("credits_amount")
+  creditsBefore   Int      @map("credits_before")
+  creditsAfter    Int      @map("credits_after")
+  
+  description     String?  @db.Text
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  // Relaciones
+  user         User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  subscription UserSubscription? @relation(fields: [subscriptionId], references: [id], onDelete: SetNull)
+  project      VideoProject?     @relation(fields: [projectId], references: [id], onDelete: SetNull)
+
+  @@map("credits_transactions")
+}
+
+// =====================================================
+// PAGOS
+// =====================================================
+
+model Payment {
+  id              String    @id @default(uuid())
+  userId          String    @map("user_id")
+  planId          Int?      @map("plan_id")
+  
+  linkPaymentId   String?   @unique @map("link_payment_id")
+  linkCheckoutUrl String?   @map("link_checkout_url") @db.Text
+  
+  status          String    @default("pending")
+  amountUsd       Decimal   @map("amount_usd") @db.Decimal(10, 2)
+  currency        String    @default("USD")
+  
+  paymentMethod   String?   @map("payment_method")
+  completedAt     DateTime? @map("completed_at")
+  
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+
+  // Relaciones
+  user User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  plan SubscriptionPlan? @relation(fields: [planId], references: [id])
+
+  @@map("payments")
+}
+
+// =====================================================
+// MÓDULOS INDEPENDIENTES
+// =====================================================
+
+model ImageOnlyProject {
+  id          String    @id @default(uuid())
+  userId      String    @map("user_id")
+  
+  theme       String    @db.Text
+  style       String
+  imagesCount Int       @map("images_count")
+  
+  status      String    @default("pending")
+  zipFileUrl  String?   @map("zip_file_url") @db.Text
+  creditsUsed Int?      @map("credits_used")
+  
+  createdAt   DateTime  @default(now()) @map("created_at")
+  completedAt DateTime? @map("completed_at")
+
+  // Relaciones
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("image_only_projects")
+}
+
+model ScriptOnlyProject {
+  id              String    @id @default(uuid())
+  userId          String    @map("user_id")
+  
+  theme           String    @db.Text
+  durationMinutes Int?      @map("duration_minutes")
+  style           String?
+  
+  generatedScript String?   @map("generated_script") @db.Text
+  status          String    @default("pending")
+  creditsUsed     Int?      @map("credits_used")
+  
+  createdAt       DateTime  @default(now()) @map("created_at")
+  completedAt     DateTime? @map("completed_at")
+
+  // Relaciones
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("script_only_projects")
+}
+
+model VoiceOnlyProject {
+  id          String    @id @default(uuid())
+  userId      String    @map("user_id")
+  
+  inputText   String    @map("input_text") @db.Text
+  voiceId     String    @map("voice_id")
+  language    String    @default("es")
+  
+  audioUrl    String?   @map("audio_url") @db.Text
+  status      String    @default("pending")
+  creditsUsed Int?      @map("credits_used")
+  
+  createdAt   DateTime  @default(now()) @map("created_at")
+  completedAt DateTime? @map("completed_at")
+
+  // Relaciones
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("voice_only_projects")
+}
